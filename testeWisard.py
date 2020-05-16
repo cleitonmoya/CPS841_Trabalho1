@@ -4,6 +4,7 @@
 Teste da biblioteca Wisard
 Aluno: Cleiton Moya de Almeida
 """
+import numpy as np
 import wisardpkg as wp
 
 # load input data, just zeros and ones  
@@ -13,6 +14,8 @@ X = [
       [0,0,0,0,1,1,1,1],
       [0,0,0,0,0,1,1,1]
     ]
+
+X= np.array(X)
 
 # load label data, which must be a string array
 y = [
@@ -28,10 +31,9 @@ ignoreZero  = False # optional; causes the rams to ignore the address 0
 
 # False by default for performance reasons,
 # when True, WiSARD prints the progress of train() and classify()
-verbose = True
+verbose = False
 
 wsd = wp.Wisard(addressSize, ignoreZero=ignoreZero, verbose=verbose)
-
 
 # train using the input data
 wsd.train(X,y)
