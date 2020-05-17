@@ -15,8 +15,6 @@ X = [
       [0,0,0,0,0,1,1,1]
     ]
 
-X= np.array(X)
-
 # load label data, which must be a string array
 y = [
       "cold",
