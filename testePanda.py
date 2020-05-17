@@ -25,21 +25,22 @@ labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 #D0 = test.loc[0]
 #D1 = test.loc[1]
 D2 = test.loc[2]
+D2 = D2.iloc[0:10,:] # Seleciona os 10 primeiros elementos
 
 # 3. Realiza um pré-tratamento das imagens de forma a torná-las monocromática
-D2 = D2.iloc[0:10,:]
-D2 = D2.apply(lambda x: 255*np.heaviside(x-122,0))
+threshold = 128
+D2 = D2.apply(lambda x: 255*np.heaviside(x-threshold,0))
 
 # 3.1 Torna o vetor binário e transforma em lista de listas
 # x = 0, se x <= 122; x = 1, se x > 122
-D2b = D2.apply(lambda x: np.heaviside(x-122,0))
-D2L = D.values.tolist()
+D2b = D2.apply(lambda x: np.heaviside(x-threshold,0))
+D2L = D2b.values.tolist()
 
 # 3.2 Transforma os labels em uma lista de strings
 y =list(map(str,D2.index.to_list()))
 
 # Transforma o conjunto em np.array (para plotagem), excluindo o label
-d2 = D2.to_numpy()
+d2 = D2b.to_numpy()
 
 '''
 idxDado = 635
@@ -48,6 +49,6 @@ arr = test.iloc[idxDado,:].to_numpy().reshape(28,28)
 # Plota o subconjunto de 10 exemplares
 for k,arr in enumerate(d2):
     plt.subplot(2,5,k+1)
-    plt.imshow(arr.reshape(28,28), cmap='gray',vmin=0, vmax=255)
+    plt.imshow(arr.reshape(28,28), cmap='gray',vmin=0, vmax=1)
     plt.axis('off')
     
