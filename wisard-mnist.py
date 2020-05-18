@@ -13,33 +13,33 @@ A implementar:
       classe, bem como o a confiança
     
 """
-from sklearn.metrics import confusion_matrix, accuracy_score
+
+import time
 import numpy as np
 import pandas as pd
-import time
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, accuracy_score
 from PIL import Image
 import wisardpkg as wp
 
 # ---------------------------- PARÂMETROS GERAIS ----------------------------
 
-threshold = 128     # limite para a transofmração grayscale -> p&b
+threshold = 128     # limite para a transfomação grayscale -> p&b
 selNdados = False   # aplica somente sem em um sub-conjunto de dados
-N1 = 100          # número de dados de treinamento
-N2 = 10          # número de dados de teste
+N1 = 100            # número de dados de treinamento
+N2 = 10             # número de dados de teste
+N = 10              # número de experimentos
 
 # Parâmetros da WiSARD
-addressSize = 8     # number of addressing bits in the ram
-ignoreZero  = False  # causes the rams to ignore the address 0
+addressSize = 14     # número de bits de enderaçamento das RAMs
+ignoreZero  = False  # RAMs ignoram o endereço 0
 verbose = False
-returnActivationDegree = False # optional
-returnConfidence = False       # optional
-returnClassesDegrees = False    # optional
+returnActivationDegree = False # retorna o grau de similariedade de cada sapida
+returnConfidence = False       # retorna o grau de confiança de cada saída
+returnClassesDegrees = False   # optional
+
 
 # -------------------- LEITURA E PRÉ-TRATAMENTO DOS DADOS --------------------
-
-def step(x):
-    return 1 * (x > 0)
 
 # 1. Lê os conjuntos de dados de treinamento e teste
 #    train_df.sahpe = (60000, 784) / teste_df.shape = (10000, 784) 
@@ -53,6 +53,9 @@ if selNdados:
 
 # 3. Torna as imagens mono-cromáticas e formata os dados de entrada
 #    X em listas binárias
+def step(x):
+    return 1 * (x > 0)
+
 D_tr = D_tr.apply(lambda x: step(x - threshold))
 D_te = D_te.apply(lambda x: step(x - threshold))
 X_tr = D_tr.values.tolist()
@@ -64,40 +67,47 @@ Y_te = list(map(str,D_te.index.to_list()))
 
 
 # --------------------------- APLICAÇÃO DA WiSARD --------------------------- 
-
-# Criação do modelo
-wsd = wp.Wisard(addressSize,
-                ignoreZero = ignoreZero, 
-                verbose = verbose, 
-                returnActivationDegree = returnActivationDegree,
-                returnConfidence = returnConfidence,
-                returnClassesDegrees = returnClassesDegrees)
-
-# Treinamento
-startTime = time.time()
-wsd.train(X_tr,Y_tr)
-endTime = time.time() 
-print("Treinamento concluído em {0:1.0f}s".format(endTime-startTime))
-
-# Classificação (hipótese G)
-startTime = time.time()
-G = wsd.classify(X_te)
-endTime = time.time() 
-print("Classificação concluída em {0:1.0f}s".format(endTime-startTime))
-
+Acc = np.array([]) # matriz de acurácia
+for n in range(N):
+    
+    print("Experimento {0:1d}:".format(n))
+    
+    # Criação do modelo
+    wsd = wp.Wisard(addressSize,
+                    ignoreZero = ignoreZero, 
+                    verbose = verbose, 
+                    returnActivationDegree = returnActivationDegree,
+                    returnConfidence = returnConfidence,
+                    returnClassesDegrees = returnClassesDegrees)
+    
+    # Treinamento
+    startTime = time.time()
+    wsd.train(X_tr,Y_tr)
+    endTime = time.time() 
+    print("\tTreinamento concluído em {0:1.0f}s".format(endTime-startTime))
+    
+    # Classificação
+    startTime = time.time()
+    G = wsd.classify(X_te)
+    endTime = time.time() 
+    print("\tClassificação concluída em {0:1.0f}s".format(endTime-startTime))
 
 # ------------------------------- AVALIAÇÕES  ------------------------------
 
-# Transformação das lists em arrays
-Y = np.array(list(map(int,Y_te)))
-G = np.array(list(map(int, G)))
+    # Transformação das lists em arrays
+    Y = np.array(list(map(int,Y_te)))
+    G = np.array(list(map(int, G)))
 
-# Avalição da acurácia
-Acc = accuracy_score(Y,G)
-print("Acurácia G: ", Acc)
+    # Avalição da acurácia no experimento n 
+    Acc = np.append(Acc, accuracy_score(Y,G))
 
-# Matriz de confusão
+# Acurácia média
+Acc_mean = Acc.mean()
+Acc_std = Acc.std()
+print("\nAcurácia média: {0:1.2f} \u00B1 {1:1.2f}".format(Acc.mean(), Acc.std()))
+
+# Matriz de confusão do último experimento
 C = confusion_matrix(Y,G)
-print("Matriz de confusao:")
+print("\nMatriz de confusão:")
 print(C)
 
