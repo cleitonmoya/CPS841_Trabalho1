@@ -5,9 +5,8 @@ CPS841 - Redes Neurais Sem Peso
 Aplicação do classificador WiSARD na base de dados MNIST
 Aluno: Cleiton Moya de Almeida
 
-A implementar:
-    - testar o melhor n_i entre {4, 7, 14, 28, 49, 56}
-        Melhores resultados: 28
+Resultados
+    - teste ni={4, 7, 14, 28, 49, 56}
         4: 0.72 +- 0.01 | 49s
         7: 0.77 +- 0.01 | 2s/10s
         14: 0.83 +- 0.01 | 1.86s/2s
@@ -15,98 +14,80 @@ A implementar:
         35: 0.92 +- 0.00 | 1.37s/0.83s
         40: 0.92 +- 0.00 | 1.50s/0.83s 
         49: 0.91 +- 0.00 | 1.55s/0.71s
-        56: 0.88 +- 0.00 | 0.54s/0.66s    
+        56: 0.88 +- 0.00 | 0.54s/0.66s  
+        
+    - teste com split
+        70/30: mesmo resultado
+        80/20: memso resultado
+        90/10: mesmo resultado
+    
 """
-
 import time
 import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, accuracy_score
-from PIL import Image
+from sklearn.model_selection import train_test_split
 import wisardpkg as wp
-
-
-# ---------------------------- FUNÇÕES AUXILIARES ----------------------------
-
-def plotaExemplaresConfusao(X,Y,G,y,g):
-    # data-frame com todas as classificações
-    df = pd.DataFrame({'Y':Y,'G':G,'X':X})
-    
-    # classificações incorretas da classe 'c'
-    dfC = df.loc[(df['Y']==y) & (df['G']==g)]
-    
-    # sorteia 10 exemplares mal-classificados
-    n, _ = dfC.shape
-
-    if n == 0:
-        print("Não há confusão para o 'y' e 'g' informado")
-    else:
-        if n<10: 
-            k = n 
-        else: 
-            k = 10
-            
-        pos = random.sample(range(n),k)
-        dfR = dfC.iloc[pos]
-        R =  dfR['X'].to_numpy()
-    
-        # plota os exemplares mal-classificados
-        for k,arr in enumerate(R):
-            arr = np.array(arr)
-            plt.subplot(2,5,k+1)
-            plt.imshow(arr.reshape(28,28), cmap='gray',vmin=0, vmax=1)
-            plt.axis('off')
-            plt.title(dfR.iloc[k,1])
-    
 
 # ---------------------------- PARÂMETROS GERAIS ----------------------------
 
-threshold = 128     # limite para a transfomação grayscale -> p&b
-selNdados = False   # aplica somente sem em um sub-conjunto de dados
+# Número de experimentos
+N = 10              
+
+# Carregamento
+selNdados = False   # carega somente N pontos da base de daddos
 N1 = 100            # número de dados de treinamento
-N2 = 10             # número de dados de teste
-N = 10              # número de experimentos
+N2 = 50             # número de dados de teste
+
+# Pré-tratamento
+threshold = 128     # limite para a transfomação grayscale -> p&b
+
+# Divisão
+splitDados = True  # unifica as duas bases e aplica split
+test_size = 0.1    # tamalho do conjunto de testes
 
 # Parâmetros da WiSARD
 addressSize = 28                # número de bits de enderaçamento das RAMs
 bleachingActivated= True        # desempate
 ignoreZero  = False             # RAMs ignoram o endereço 0
-completeAddressing = True      # quando M (núm. bits) não é divisível por n_i
+completeAddressing = True       # quando M (núm. bits) não é divisível por n_i
 verbose = False                 # mensanges durante a execução
-returnActivationDegree = False  # retorna o grau de similariedade de cada sapida
-returnConfidence = False        # retorna o grau de confiança de cada saída
-returnClassesDegrees = False    # grau de confiança de cada y em relação a cada classe
+returnActivationDegree = False  # retornq o grau de similariedade de cada y
+returnConfidence = False        # retorna o grau de confiança de cada y
+returnClassesDegrees = False    # confiança de cada y em relação a cada classe
 
 
 # -------------------- LEITURA E PRÉ-TRATAMENTO DOS DADOS --------------------
 
-# 1. Lê os conjuntos de dados de treinamento e teste
+# 1. Lê e divide os conjuntos de dados de treinamento e teste
 #    train_df.sahpe = (60000, 784) / teste_df.shape = (10000, 784) 
-D_tr = pd.read_csv('dataset/mnist_train.csv', index_col="label")
-D_te = pd.read_csv('dataset/mnist_test.csv', index_col="label")
-
-# 2. Seleciona N1 dados de treinamento e N2 dados de teste 
 if selNdados:
-    D_tr = D_tr.iloc[0:N1,:]
-    D_te = D_te.iloc[0:N2,:]
-
-# 3. Torna as imagens mono-cromáticas e formata os dados de entrada
-#    X em listas binárias
+    D_tr = pd.read_csv('dataset/mnist_train.csv', index_col="label", nrows=N1)
+    D_te = pd.read_csv('dataset/mnist_test.csv', index_col="label", nrows=N2)
+else:
+    D_tr = pd.read_csv('dataset/mnist_train.csv', index_col="label")
+    D_te = pd.read_csv('dataset/mnist_test.csv', index_col="label")
+    
+# 2. Torna as imagens mono-cromáticas (pré-processamento)
 def step(x):
     return 1 * (x > 0)
-
 D_tr = D_tr.apply(lambda x: step(x - threshold))
 D_te = D_te.apply(lambda x: step(x - threshold))
-X_tr = D_tr.values.tolist()
-X_te = D_te.values.tolist()
 
-# 4. Transforma os rótulos em uma lista de strings (formato wisardpkg)
-Y_tr = list(map(str,D_tr.index.to_list()))
-Y_te = list(map(str,D_te.index.to_list()))
+# 3. Junta e re-divide os conjuntos de dados    
+if splitDados:
+    D = D_tr.append(D_te)
+    X_tr, X_te, Y_tr, Y_te = train_test_split(D.values, 
+                                              D.index.to_list(), 
+                                              test_size = test_size, 
+                                              random_state = 42,
+                                              shuffle = True)
 
-
+# 4. formata os dados de entrada e saída em listas (formato wisarpkg)
+Y_tr = list(map(str,Y_tr))
+Y_te = list(map(str,Y_te))
 
 # --------------------------- APLICAÇÃO DA WiSARD --------------------------- 
 
@@ -145,7 +126,7 @@ for n in range(N):
 
 # ------------------------------- AVALIAÇÕES  ------------------------------
 
-    # Transformação das lists em arrays
+    # Transformação das lists em np.arrays
     Y = np.array(list(map(int,Y_te)))
     G = np.array(list(map(int, G)))
 
