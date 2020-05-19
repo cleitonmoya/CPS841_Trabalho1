@@ -18,35 +18,41 @@ Resultados
         
     - teste com split
         70/30: mesmo resultado
-        80/20: memso resultado
+        80/20: mesmo resultado
         90/10: mesmo resultado
+        
+    - teste 10-fold
+    
     
 """
-import time
-import random
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, accuracy_score
-from sklearn.model_selection import train_test_split
+import random
+import time
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import accuracy_score, confusion_matrix 
 import wisardpkg as wp
 
 # ---------------------------- PARÂMETROS GERAIS ----------------------------
 
 # Número de experimentos
-N = 10              
+N = 1              
 
-# Carregamento
+# Carregamento dos dados
 selNdados = False   # carega somente N pontos da base de daddos
 N1 = 100            # número de dados de treinamento
 N2 = 50             # número de dados de teste
 
-# Pré-tratamento
+# Pré-tratamento dos dados
 threshold = 128     # limite para a transfomação grayscale -> p&b
 
-# Divisão
-splitDados = True  # unifica as duas bases e aplica split
-test_size = 0.1    # tamalho do conjunto de testes
+# Divisão dos dados
+splitDados = False  # unifica as duas bases e aplica split
+test_size = 0.2    # tamalho do conjunto de testes
+
+# K-fold
+kfold = True
+nsplits = 10
 
 # Parâmetros da WiSARD
 addressSize = 28                # número de bits de enderaçamento das RAMs
@@ -79,13 +85,18 @@ D_te = D_te.apply(lambda x: step(x - threshold))
 # 3. Junta e re-divide os conjuntos de dados    
 if splitDados:
     D = D_tr.append(D_te)
-    X_tr, X_te, Y_tr, Y_te = train_test_split(D.values, 
+    X_tr, X_te, Y_tr, Y_te = train_test_split(D.values.tolist(), 
                                               D.index.to_list(), 
                                               test_size = test_size, 
                                               random_state = 42,
                                               shuffle = True)
+else:
+    X_tr = D_tr.values.tolist()
+    X_te = D_te.values.tolist()
+    Y_tr = D_tr.index.to_list()
+    Y_te = D_te.index.to_list()
 
-# 4. formata os dados de entrada e saída em listas (formato wisarpkg)
+# 4. formata os dados de saída em formato de lista de string (formato wisarpkg)
 Y_tr = list(map(str,Y_tr))
 Y_te = list(map(str,Y_te))
 
@@ -94,8 +105,9 @@ Y_te = list(map(str,Y_te))
 Acc = np.array([])  # matriz de acurácia
 T_tr = np.array([]) # matriz de tempos de treinamento
 T_te = np.array([]) # matriz de tempos de classificação
-for n in range(N):
-    
+
+
+for n in range(N): # caso não usar k-fold
     print("Experimento {0:1d}:".format(n))
     
     # Criação do modelo
@@ -126,10 +138,10 @@ for n in range(N):
 
 # ------------------------------- AVALIAÇÕES  ------------------------------
 
-    # Transformação das lists em np.arrays
-    Y = np.array(list(map(int,Y_te)))
-    G = np.array(list(map(int, G)))
-
+    # Transformação das listas de string em listas de inteiros 
+    G = list(map(int, G))
+    Y = list(map(int, Y_te))
+    
     # Avalição da acurácia no experimento n
     Acc_n = accuracy_score(Y,G)
     Acc = np.append(Acc, Acc_n)
@@ -145,9 +157,9 @@ Acc_std = Acc.std()
 print("\nAcurácia média: {0:1.2f} \u00B1 {1:1.2f}".format(Acc.mean(), Acc.std()))
 
 # Matriz de confusão do último experimento
-# Linhas: Y
-# Colunas: G
 labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 C = confusion_matrix(Y,G,labels)
 print("\nMatriz de confusão do último experimento:")
+print("\t Linhas: y")
+print("\tColunas: g")
 print(C)
