@@ -6,11 +6,16 @@ Aplicação do classificador WiSARD na base de dados MNIST
 Aluno: Cleiton Moya de Almeida
 
 A implementar:
-    - testar o melhor n_i entre {2, 4, 7, 8, 14, 16}, 28, 
-    - criar uma função que, uma vez treinada a rede, retorna a classificaão
-      de um exemplar aleatório, retornando a medida de similaridade de cada
-      classe, bem como o a confiança
-    
+    - testar o melhor n_i entre {4, 7, 14, 28, 49, 56}
+        Melhores resultados: 28
+        4: 0.72 +- 0.01 | 49s
+        7: 0.77 +- 0.01 | 2s/10s
+        14: 0.83 +- 0.01 | 1.86s/2s
+    **  28: 0.91 +- 0.00 | 1.72s/1s | Sem bleaching: 0.81 | ingnoringZero: 0.83
+        35: 0.92 +- 0.00 | 1.37s/0.83s
+        40: 0.92 +- 0.00 | 1.50s/0.83s 
+        49: 0.91 +- 0.00 | 1.55s/0.71s
+        56: 0.88 +- 0.00 | 0.54s/0.66s    
 """
 
 import time
@@ -24,7 +29,6 @@ import wisardpkg as wp
 
 
 # ---------------------------- FUNÇÕES AUXILIARES ----------------------------
-
 
 def plotaExemplaresConfusao(X,Y,G,y,g):
     # data-frame com todas as classificações
@@ -63,15 +67,17 @@ threshold = 128     # limite para a transfomação grayscale -> p&b
 selNdados = False   # aplica somente sem em um sub-conjunto de dados
 N1 = 100            # número de dados de treinamento
 N2 = 10             # número de dados de teste
-N = 1              # número de experimentos
+N = 10              # número de experimentos
 
 # Parâmetros da WiSARD
-addressSize = 14     # número de bits de enderaçamento das RAMs
-ignoreZero  = False  # RAMs ignoram o endereço 0
-verbose = False
-returnActivationDegree = False # retorna o grau de similariedade de cada sapida
-returnConfidence = False       # retorna o grau de confiança de cada saída
-returnClassesDegrees = False   # optional
+addressSize = 28                # número de bits de enderaçamento das RAMs
+bleachingActivated= True        # desempate
+ignoreZero  = False             # RAMs ignoram o endereço 0
+completeAddressing = True      # quando M (núm. bits) não é divisível por n_i
+verbose = False                 # mensanges durante a execução
+returnActivationDegree = False  # retorna o grau de similariedade de cada sapida
+returnConfidence = False        # retorna o grau de confiança de cada saída
+returnClassesDegrees = False    # grau de confiança de cada y em relação a cada classe
 
 
 # -------------------- LEITURA E PRÉ-TRATAMENTO DOS DADOS --------------------
@@ -104,15 +110,19 @@ Y_te = list(map(str,D_te.index.to_list()))
 
 # --------------------------- APLICAÇÃO DA WiSARD --------------------------- 
 
-Acc = np.array([]) # matriz de acurácia
+Acc = np.array([])  # matriz de acurácia
+T_tr = np.array([]) # matriz de tempos de treinamento
+T_te = np.array([]) # matriz de tempos de classificação
 for n in range(N):
     
     print("Experimento {0:1d}:".format(n))
     
     # Criação do modelo
     wsd = wp.Wisard(addressSize,
-                    ignoreZero = ignoreZero, 
-                    verbose = verbose, 
+                    bleachingActivated = bleachingActivated,
+                    ignoreZero = ignoreZero,
+                    completeAddressing = completeAddressing,
+                    verbose = verbose,
                     returnActivationDegree = returnActivationDegree,
                     returnConfidence = returnConfidence,
                     returnClassesDegrees = returnClassesDegrees)
@@ -120,14 +130,18 @@ for n in range(N):
     # Treinamento
     startTime = time.time()
     wsd.train(X_tr,Y_tr)
-    endTime = time.time() 
-    print("\tTreinamento concluído em {0:1.0f}s".format(endTime-startTime))
-    
+    endTime = time.time()
+    T_tr_n = endTime-startTime
+    print("\tTreinamento concluído em {0:1.2f}s".format(T_tr_n))
+    T_tr = np.append(T_tr,T_tr_n)
+
     # Classificação
     startTime = time.time()
     G = wsd.classify(X_te)
-    endTime = time.time() 
-    print("\tClassificação concluída em {0:1.0f}s".format(endTime-startTime))
+    endTime = time.time()
+    T_te_n = endTime-startTime
+    print("\tClassificação concluída em {0:1.2f}s".format(T_te_n))
+    T_te = np.append(T_te,T_te_n)
 
 # ------------------------------- AVALIAÇÕES  ------------------------------
 
@@ -135,8 +149,14 @@ for n in range(N):
     Y = np.array(list(map(int,Y_te)))
     G = np.array(list(map(int, G)))
 
-    # Avalição da acurácia no experimento n 
-    Acc = np.append(Acc, accuracy_score(Y,G))
+    # Avalição da acurácia no experimento n
+    Acc_n = accuracy_score(Y,G)
+    Acc = np.append(Acc, Acc_n)
+    print("\tAcurácia {0:1.2f}".format(Acc_n))
+
+# Tempos médios de treinamento e classificação
+print("\nTempo médio de treinamento: {0:1.2f}s".format(T_tr.mean()))
+print("Tempo médio de classificação: {0:1.2f}s".format(T_te.mean()))
 
 # Acurácia média
 Acc_mean = Acc.mean()
@@ -150,5 +170,3 @@ labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 C = confusion_matrix(Y,G,labels)
 print("\nMatriz de confusão do último experimento:")
 print(C)
-
-plotaExemplaresConfusao(X_te,Y,G,3,8)
