@@ -14,6 +14,7 @@ X = [
       [0,0,0,0,1,1,1,1],
       [0,0,0,0,0,1,1,1]
     ]
+X = np.array(X)
 
 # load label data, which must be a string array
 y = [
@@ -22,7 +23,7 @@ y = [
       "hot",
       "hot"
     ]
-
+y = np.array(y)
 
 addressSize = 3     # number of addressing bits in the ram
 ignoreZero  = False # optional; causes the rams to ignore the address 0
