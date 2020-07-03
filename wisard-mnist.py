@@ -4,58 +4,34 @@ Universidade Federal do Rio de Janeiro
 CPS841 - Redes Neurais Sem Peso
 Aplicação do classificador WiSARD na base de dados MNIST
 Aluno: Cleiton Moya de Almeida
-
-Resultados
-    - teste ni={4, 7, 14, 28, 49, 56}
-        4: 0.72 +- 0.01 | 49s
-        7: 0.77 +- 0.01 | 2s/10s
-        14: 0.83 +- 0.01 | 1.86s/2s
-    **  28: 0.91 +- 0.00 | 1.72s/1s | Sem bleaching: 0.81 | ingnoringZero: 0.83
-        35: 0.92 +- 0.00 | 1.37s/0.83s
-        40: 0.92 +- 0.00 | 1.50s/0.83s 
-        49: 0.91 +- 0.00 | 1.55s/0.71s
-        56: 0.88 +- 0.00 | 0.54s/0.66s  
-        
-    - teste com split
-        70/30: mesmo resultado
-        80/20: mesmo resultado
-        90/10: mesmo resultado
-        
-    - teste 10-fold
-    
     
 """
 import numpy as np
 import pandas as pd
-import random
 import time
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix 
 import wisardpkg as wp
 
 # ---------------------------- PARÂMETROS GERAIS ----------------------------
 
 # Número de experimentos
-N = 1              
+N = 10          
 
 # Carregamento dos dados
 selNdados = False   # carega somente N pontos da base de daddos
-N1 = 100            # número de dados de treinamento
+N1 = 100          # número de dados de treinamento
 N2 = 50             # número de dados de teste
 
 # Pré-tratamento dos dados
-threshold = 128     # limite para a transfomação grayscale -> p&b
+threshold = 125     # limite para a transfomação grayscale -> p&b
 
 # Divisão dos dados
-splitDados = False  # unifica as duas bases e aplica split
-test_size = 0.2    # tamalho do conjunto de testes
-
-# K-fold
-kfold = True
-nsplits = 10
+splitDados = True  # unifica as duas bases e aplica split
+test_size = 0.3     # tamanho do conjunto de testes
 
 # Parâmetros da WiSARD
-addressSize = 28                # número de bits de enderaçamento das RAMs
+addressSize = 40                # número de bits de enderaçamento das RAMs
 bleachingActivated= True        # desempate
 ignoreZero  = False             # RAMs ignoram o endereço 0
 completeAddressing = True       # quando M (núm. bits) não é divisível por n_i
@@ -70,20 +46,21 @@ returnClassesDegrees = False    # confiança de cada y em relação a cada class
 # 1. Lê e divide os conjuntos de dados de treinamento e teste
 #    train_df.sahpe = (60000, 784) / teste_df.shape = (10000, 784) 
 if selNdados:
-    D_tr = pd.read_csv('dataset/mnist_train.csv', index_col="label", nrows=N1)
-    D_te = pd.read_csv('dataset/mnist_test.csv', index_col="label", nrows=N2)
+    D_tr1 = pd.read_csv('dataset/mnist_train.csv', index_col="label", nrows=N1)
+    D_te1 = pd.read_csv('dataset/mnist_test.csv', index_col="label", nrows=N2)
 else:
-    D_tr = pd.read_csv('dataset/mnist_train.csv', index_col="label")
-    D_te = pd.read_csv('dataset/mnist_test.csv', index_col="label")
+    D_tr1 = pd.read_csv('dataset/mnist_train.csv', index_col="label")
+    D_te1 = pd.read_csv('dataset/mnist_test.csv', index_col="label")
     
 # 2. Torna as imagens mono-cromáticas (pré-processamento)
 def step(x):
     return 1 * (x > 0)
-D_tr = D_tr.apply(lambda x: step(x - threshold))
-D_te = D_te.apply(lambda x: step(x - threshold))
+D_tr = D_tr1.apply(lambda x: step(x - threshold)).copy()
+D_te = D_te1.apply(lambda x: step(x - threshold)).copy()
 
 # 3. Junta e re-divide os conjuntos de dados    
 if splitDados:
+    print('Split ativado')
     D = D_tr.append(D_te)
     X_tr, X_te, Y_tr, Y_te = train_test_split(D.values.tolist(), 
                                               D.index.to_list(), 

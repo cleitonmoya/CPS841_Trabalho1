@@ -4,25 +4,6 @@ Universidade Federal do Rio de Janeiro
 CPS841 - Redes Neurais Sem Peso
 Aplicação do classificador WiSARD na base de dados MNIST
 Aluno: Cleiton Moya de Almeida
-
-Resultados
-    - teste ni={4, 7, 14, 28, 49, 56}
-        4: 0.72 +- 0.01 | 49s
-        7: 0.77 +- 0.01 | 2s/10s
-        14: 0.83 +- 0.01 | 1.86s/2s
-    **  28: 0.91 +- 0.00 | 1.72s/1s | Sem bleaching: 0.81 | ingnoringZero: 0.83
-        35: 0.92 +- 0.00 | 1.37s/0.83s
-        40: 0.92 +- 0.00 | 1.50s/0.83s 
-        49: 0.91 +- 0.00 | 1.55s/0.71s
-        56: 0.88 +- 0.00 | 0.54s/0.66s  
-        
-    - teste com split
-        70/30: mesmo resultado
-        80/20: mesmo resultado
-        90/10: mesmo resultado
-        
-    - teste 10-fold
-    
     
 """
 import numpy as np
@@ -40,13 +21,13 @@ N1 = 100            # número de dados de treinamento
 N2 = 50             # número de dados de teste
 
 # Pré-tratamento dos dados
-threshold = 128     # limite para a transfomação grayscale -> p&b
+threshold = 64     # limite para a transfomação grayscale -> p&b
 
 # K-fold
 nsplits = 10
 
 # Parâmetros da WiSARD
-addressSize = 10                 # número de bits de enderaçamento das RAMs
+addressSize = 14                # número de bits de enderaçamento das RAMs
 bleachingActivated= True        # desempate
 ignoreZero  = False             # RAMs ignoram o endereço 0
 completeAddressing = True       # quando M (núm. bits) não é divisível por n_i
